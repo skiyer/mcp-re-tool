@@ -29,22 +29,35 @@ The entrypoint:
 
 ## Quick start
 
-```bash
-docker run --rm -i \
-  -v ~/images/ida94-x64.sqfs:/opt/toolchain:ro \
-  -v ~/.mcp-usrdir:/root/.idapro \
-  -v "$PWD:/work" \
-  ghcr.io/skiyer/mcp-re-tool:latest stdio --agent=my-agent
-```
+`/opt/toolchain` must be a **mounted filesystem**, not a bind-mounted *file*. A
+plain `-v img.sqfs:/opt/toolchain` mounts the file, which will not work. How you
+provide the mount depends on the runtime:
 
-HTTP transport (bind to loopback and tunnel, or publish a port):
+| Runtime | How to expose `/opt/toolchain` |
+|---|---|
+| Docker / Podman | extract once (`unsquashfs -d ~/toolchain img.sqfs`) and bind the **directory**, or run `--privileged` and `mount -t squashfs -o loop,ro` yourself (needs a kernel with squashfs) |
+| microsandbox | `--mount-disk img.sqfs:/opt/toolchain:ro` — the platform mounts it |
+| Kubernetes | privileged `initContainer` doing `mount -t squashfs -o loop,ro` + `hostPath`, or bake the toolchain into a private image |
 
 ```bash
+# Docker: prepare a directory once, then run
+unsquashfs -d ~/toolchain ~/images/ida94-x64.sqfs
+
 docker run --rm -d --name mcp-re-tool \
-  -v ~/images/ida94-x64.sqfs:/opt/toolchain:ro \
+  -v ~/toolchain:/opt/toolchain:ro \
   -v ~/.mcp-usrdir:/root/.idapro \
   -v "$PWD:/work" -p 8737:8737 \
   ghcr.io/skiyer/mcp-re-tool:latest http --host 0.0.0.0 --port 8737
+```
+
+stdio transport (what a local agent spawns):
+
+```bash
+docker run --rm -i \
+  -v ~/toolchain:/opt/toolchain:ro \
+  -v ~/.mcp-usrdir:/root/.idapro \
+  -v "$PWD:/work" \
+  ghcr.io/skiyer/mcp-re-tool:latest stdio --agent=my-agent
 ```
 
 MCP endpoint: `http://127.0.0.1:8737/mcp`.
@@ -53,7 +66,7 @@ MCP endpoint: `http://127.0.0.1:8737/mcp`.
 
 | Path | Mode | Purpose |
 |---|---|---|
-| `/opt/toolchain` (`$IDADIR`) | **ro** | Toolchain installation tree. Must contain the license file in the program directory (`idapro*.hexlic`). |
+| `/opt/toolchain` (`$IDADIR`) | **ro** | Mounted toolchain filesystem (directory or disk image — see above). Must contain the license file in the program directory (`idapro*.hexlic`). |
 | `/root/.idapro` (`$IDAUSR`) | **rw** | Registry, EULA, sessions. Must be writable. |
 | `/work` | **rw** | Input binaries and generated databases. Must be writable — IDA writes the `.i64/.id0/.id1/...` next to the sample. |
 | `/license/idapro.hexlic` | ro | Optional: license injected as its own mount instead of living in the toolchain image. |
