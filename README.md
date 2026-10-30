@@ -1,3 +1,14 @@
+# mcp-re-tool — archived
+
+> This repository is archived. The MCP server is now a byproduct of
+> **[pi-re](https://github.com/skiyer/pi-re)**: the same image runs pi and, with
+> `-- stdio` or `-- http`, serves any MCP client. Mount the toolchain read-only
+> at `/opt/toolchain` exactly as before.
+>
+> Toolchain images: [re-toolchain-images](https://github.com/skiyer/re-toolchain-images).
+
+---
+
 # mcp-re-tool
 
 An MCP server for reverse-engineering toolchains, where the toolchain is a
